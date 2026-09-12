@@ -1,0 +1,11 @@
+project_id = "phvybounxmtrbohbfxsl"
+
+# Temporario para homologacao LATAM: o front valida admin por senha em todas as
+# acoes sensiveis, mas ainda nao temos a publishable key completa do projeto
+# para assinar JWT no browser. Quando a key for configurada no Vercel, voltar
+# verify_jwt para true, igual ao BR.
+[functions.admin-api]
+verify_jwt = false
+
+[functions.members-api]
+verify_jwt = false
