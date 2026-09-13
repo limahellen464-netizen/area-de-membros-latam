@@ -1,5 +1,5 @@
 import { FileText, Clock3 } from "lucide-react";
-import { cn } from "@reconquista/ui/lib/utils";
+import { cn } from "@/lib/utils";
 import { AudioPlayer } from "./AudioPlayer";
 import { YouTubePlayer, type VideoPlayerTelemetryEvent } from "./YouTubePlayer";
 import type { PurchaseModule } from "./types";

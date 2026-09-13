@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@reconquista/ui/button";
-import { Input } from "@reconquista/ui/input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ArrowRight, Loader2, Mail, MessageSquareText } from "lucide-react";
 import logo from "@/assets/logo.png";

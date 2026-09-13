@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "@reconquista/ui/button";
+import { Button } from "@/components/ui/button";
 import { LogOut, Menu, X } from "lucide-react";
 
 interface MembersHeaderProps {

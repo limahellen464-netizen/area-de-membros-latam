@@ -1,7 +1,7 @@
-import { Input } from "@reconquista/ui/input";
-import { Label } from "@reconquista/ui/label";
-import { Switch } from "@reconquista/ui/switch";
-import { Textarea } from "@reconquista/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DEFAULT_CONSULTORIA_CONFIG,
   parseConsultoriaConfig,

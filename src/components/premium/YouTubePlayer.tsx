@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, Loader2, Play, RefreshCw } from "lucide-react";
-import { Button } from "@reconquista/ui/button";
-import { cn } from "@reconquista/ui/lib/utils";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { getYouTubeVideoId } from "@/lib/youtubeVideo";
 
 type YouTubePlayerStatus = "idle" | "loading" | "ready" | "error";

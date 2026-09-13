@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@reconquista/ui/button";
-import { Slider } from "@reconquista/ui/slider";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@reconquista/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import { Download, Gauge, Pause, Play, SkipBack, SkipForward } from "lucide-react";
-import { cn } from "@reconquista/ui/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface AudioPlayerProps {
   src: string;

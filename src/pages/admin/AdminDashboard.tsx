@@ -6,11 +6,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@reconquista/ui/card";
-import { Button } from "@reconquista/ui/button";
-import { Input } from "@reconquista/ui/input";
-import { Label } from "@reconquista/ui/label";
-import { Badge } from "@reconquista/ui/badge";
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -18,7 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@reconquista/ui/table";
+} from "@/components/ui/table";
 import {
   AlertTriangle,
   BarChart3,

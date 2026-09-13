@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@reconquista/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@reconquista/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -9,7 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@reconquista/ui/table";
+} from "@/components/ui/table";
 import {
   Activity,
   AlertTriangle,

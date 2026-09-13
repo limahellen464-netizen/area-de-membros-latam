@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { AspectRatio } from "@reconquista/ui/aspect-ratio";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 import {
   ArrowUpRight,
   CheckCircle,
@@ -7,7 +7,7 @@ import {
   Package,
   ShoppingCart,
 } from "lucide-react";
-import { cn } from "@reconquista/ui/lib/utils";
+import { cn } from "@/lib/utils";
 import { LockedOverlay } from "./LockedOverlay";
 import type { Purchase, PremiumCardVariant } from "./types";
 import { pickContrastText, resolveUpsellCta } from "@/lib/upsellCta";

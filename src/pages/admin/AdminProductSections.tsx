@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button } from "@reconquista/ui/button";
-import { Input } from "@reconquista/ui/input";
-import { Label } from "@reconquista/ui/label";
-import { Switch } from "@reconquista/ui/switch";
-import { Badge } from "@reconquista/ui/badge";
-import { Textarea } from "@reconquista/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from "@reconquista/ui/card";
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -19,14 +19,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@reconquista/ui/dialog";
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@reconquista/ui/select";
+} from "@/components/ui/select";
 import {
   Archive,
   ArchiveRestore,

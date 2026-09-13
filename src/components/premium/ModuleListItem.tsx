@@ -1,5 +1,5 @@
 import { Check, FileText, Lock, Music, Play, Clock3 } from "lucide-react";
-import { cn } from "@reconquista/ui/lib/utils";
+import { cn } from "@/lib/utils";
 import type { ModuleState, PurchaseModule } from "./types";
 
 interface ModuleListItemProps {

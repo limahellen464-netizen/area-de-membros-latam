@@ -1,6 +1,6 @@
 import { Check, Clock3, FileText, Lock, Music, Play } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@reconquista/ui/lib/utils";
+import { cn } from "@/lib/utils";
 import type { PurchaseModule } from "./types";
 import type { PlaceholderLesson } from "@/config/courseSections";
 

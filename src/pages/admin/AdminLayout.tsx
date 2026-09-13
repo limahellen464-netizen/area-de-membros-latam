@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Button } from "@reconquista/ui/button";
-import { cn } from "@reconquista/ui/lib/utils";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Activity, BarChart3, Globe, LogOut, Package, Palette, Settings, Shield } from "lucide-react";
 import { useAdminSession } from "./useAdminSession";
 

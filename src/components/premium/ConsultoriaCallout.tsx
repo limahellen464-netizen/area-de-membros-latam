@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react";
-import { Button } from "@reconquista/ui/button";
+import { Button } from "@/components/ui/button";
 import { ArrowRight, ClipboardCheck, MessageSquareText } from "lucide-react";
-import { cn } from "@reconquista/ui/lib/utils";
+import { cn } from "@/lib/utils";
 import { useSiteSettings } from "@/lib/siteSettings";
 
 export type ConsultoriaCalloutVariant = "below" | "sidebar";

@@ -1,4 +1,4 @@
-import { Button } from "@reconquista/ui/button";
+import { Button } from "@/components/ui/button";
 import { ShieldCheck } from "lucide-react";
 
 const AdminLatam = () => (

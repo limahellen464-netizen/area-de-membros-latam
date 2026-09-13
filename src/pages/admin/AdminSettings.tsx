@@ -1,15 +1,15 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@reconquista/ui/button";
-import { Input } from "@reconquista/ui/input";
-import { Label } from "@reconquista/ui/label";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@reconquista/ui/card";
+} from "@/components/ui/card";
 import { KeyRound, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi, AdminApiAuthError } from "./adminApi";

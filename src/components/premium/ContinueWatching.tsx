@@ -1,6 +1,6 @@
-import { Button } from "@reconquista/ui/button";
+import { Button } from "@/components/ui/button";
 import { CheckCircle, Play } from "lucide-react";
-import { cn } from "@reconquista/ui/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface ContinueWatchingProps {
   productName: string;

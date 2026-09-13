@@ -11,7 +11,7 @@ import {
   Target,
   type LucideIcon,
 } from "lucide-react";
-import { cn } from "@reconquista/ui/lib/utils";
+import { cn } from "@/lib/utils";
 import type { CourseSection } from "@/config/courseSections";
 
 // PR ADMIN 6B — Lucide icon map (allowlist sincronizada com admin-api)

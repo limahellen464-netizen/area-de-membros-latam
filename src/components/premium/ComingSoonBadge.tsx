@@ -1,6 +1,6 @@
-import { Badge } from "@reconquista/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { Clock3 } from "lucide-react";
-import { cn } from "@reconquista/ui/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface ComingSoonBadgeProps {
   label?: string;

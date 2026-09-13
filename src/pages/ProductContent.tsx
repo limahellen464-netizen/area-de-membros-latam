@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { Button } from "@reconquista/ui/button";
+import { Button } from "@/components/ui/button";
 import { CheckCircle, Clock3, Home, ListVideo } from "lucide-react";
 import { CourseHeader, LessonRow, SectionCard } from "@/components/premium";
 import type { PurchaseModule } from "@/components/premium/types";

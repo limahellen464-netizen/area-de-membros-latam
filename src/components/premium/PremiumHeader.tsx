@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "@reconquista/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -7,8 +7,8 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@reconquista/ui/sheet";
-import { Avatar, AvatarFallback } from "@reconquista/ui/avatar";
+} from "@/components/ui/sheet";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { HelpCircle, LogOut, Menu, ScrollText, User } from "lucide-react";
 import { useSiteSettings } from "@/lib/siteSettings";
 

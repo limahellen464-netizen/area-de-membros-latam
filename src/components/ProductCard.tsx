@@ -1,13 +1,13 @@
 import { useNavigate } from "react-router-dom";
-import { Button } from "@reconquista/ui/button";
-import { Badge } from "@reconquista/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@reconquista/ui/card";
+} from "@/components/ui/card";
 import {
   BookOpen,
   CheckCircle,
