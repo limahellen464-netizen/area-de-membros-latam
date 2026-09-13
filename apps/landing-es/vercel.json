@@ -1,0 +1,43 @@
+{
+  "framework": "vite",
+  "installCommand": "bun install",
+  "buildCommand": "bun run build",
+  "outputDirectory": "dist",
+  "headers": [
+    {
+      "source": "/yt",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    },
+    {
+      "source": "/gracias",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    }
+  ],
+  "redirects": [
+    { "source": "/quiz-vsl", "destination": "/quizvsl", "permanent": true },
+    { "source": "/youtube", "destination": "/yt", "permanent": true },
+    { "source": "/obrigado", "destination": "/gracias", "permanent": true },
+    { "source": "/thank-you", "destination": "/gracias", "permanent": true }
+  ],
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    {
+      "source": "/miembros/:path*",
+      "destination": "https://recupera-tu-ex-ahora-members.vercel.app/miembros/:path*"
+    },
+    {
+      "source": "/miembros",
+      "destination": "https://recupera-tu-ex-ahora-members.vercel.app/miembros"
+    },
+    {
+      "source": "/miembros/",
+      "destination": "https://recupera-tu-ex-ahora-members.vercel.app/miembros"
+    },
+    { "source": "/yt", "destination": "/youtube/index.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

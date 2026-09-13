@@ -1,0 +1,165 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Georgia&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes quiz-vsl-cta-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 18px 45px rgba(22, 163, 74, 0.32);
+  }
+
+  50% {
+    transform: scale(1.035);
+    box-shadow:
+      0 20px 52px rgba(22, 163, 74, 0.48),
+      0 0 0 8px rgba(34, 197, 94, 0.1);
+  }
+}
+
+.quiz-vsl-cta-pulse {
+  animation: quiz-vsl-cta-pulse 1.45s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quiz-vsl-cta-pulse {
+    animation: none;
+  }
+}
+
+@layer base {
+  :root {
+    --background: 30 20% 95%;
+    --foreground: 0 0% 15%;
+
+    --card: 30 15% 92%;
+    --card-foreground: 0 0% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 15%;
+
+    --primary: 0 85% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 30 15% 85%;
+    --secondary-foreground: 0 0% 15%;
+
+    --muted: 30 10% 88%;
+    --muted-foreground: 0 0% 40%;
+
+    --accent: 0 85% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 10% 85%;
+    --input: 30 10% 85%;
+    --ring: 0 85% 50%;
+
+    --radius: 0.5rem;
+
+    --cta-gradient: linear-gradient(180deg, hsl(120 70% 40%), hsl(120 70% 30%));
+    --hero-overlay: linear-gradient(180deg, hsla(30, 20%, 90%, 0.85), hsla(30, 20%, 90%, 0.95));
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Roboto', Arial, sans-serif;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Roboto', Arial, sans-serif;
+    font-weight: 900;
+  }
+}
+
+/* Oculta o botão "Below video" da VTurb — o timing é controlado pelo evento
+   callaction:current-active-items, que revela os botões da própria landing page */
+vturb-anchor-button {
+  display: none !important;
+}
+
+@layer components {
+  .cdr-hero-logo {
+    animation: cdr-logo-reveal 420ms ease-out 40ms both;
+    will-change: transform, opacity;
+  }
+
+  .cdr-hero-headline {
+    animation: cdr-headline-reveal 520ms ease-out 120ms both;
+    will-change: transform, opacity;
+  }
+
+  .cdr-hero-subheadline {
+    animation: cdr-subheadline-reveal 460ms ease-out 220ms both;
+    will-change: transform, opacity;
+  }
+}
+
+@keyframes cdr-logo-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+    filter: blur(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes cdr-headline-reveal {
+  from {
+    opacity: 0.72;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cdr-subheadline-reveal {
+  from {
+    opacity: 0.68;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cdr-hero-logo,
+  .cdr-hero-headline,
+  .cdr-hero-subheadline {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
