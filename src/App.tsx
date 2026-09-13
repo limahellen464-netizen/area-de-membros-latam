@@ -16,7 +16,6 @@ const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
 const AdminQuizFunnel = lazy(() => import("./pages/admin/AdminQuizFunnel.tsx"));
 const AdminProducts = lazy(() => import("./pages/admin/AdminProducts.tsx"));
 const AdminProductDetail = lazy(() => import("./pages/admin/AdminProductDetail.tsx"));
-const AdminProductSections = lazy(() => import("./pages/admin/AdminProductSections.tsx"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings.tsx"));
 const AdminSiteSettings = lazy(() => import("./pages/admin/AdminSiteSettings.tsx"));
 const AdminAppearance = lazy(() => import("./pages/admin/AdminAppearance.tsx"));
@@ -48,7 +47,6 @@ const App = () => (
               <Route path="/admin/funil-quiz" element={<AdminQuizFunnel />} />
               <Route path="/admin/produtos" element={<AdminProducts />} />
               <Route path="/admin/produtos/:id" element={<AdminProductDetail />} />
-              <Route path="/admin/produtos/:id/sections" element={<AdminProductSections />} />
               <Route path="/admin/configuracoes-globais" element={<AdminSiteSettings />} />
               <Route path="/admin/aparencia" element={<AdminAppearance />} />
               <Route path="/admin/configuracoes" element={<AdminSettings />} />

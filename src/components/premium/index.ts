@@ -7,6 +7,7 @@ export { ModuleListItem } from "./ModuleListItem";
 export { MediaPlayer } from "./MediaPlayer";
 export { YouTubePlayer } from "./YouTubePlayer";
 export type { VideoPlayerTelemetryEvent } from "./YouTubePlayer";
+export { VturbPlayer } from "./VturbPlayer";
 export { AudioPlayer } from "./AudioPlayer";
 export { ConsultoriaCallout } from "./ConsultoriaCallout";
 export { ContinueWatching } from "./ContinueWatching";

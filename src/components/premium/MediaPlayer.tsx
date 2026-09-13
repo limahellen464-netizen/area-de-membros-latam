@@ -2,6 +2,7 @@ import { FileText, Clock3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AudioPlayer } from "./AudioPlayer";
 import { YouTubePlayer, type VideoPlayerTelemetryEvent } from "./YouTubePlayer";
+import { VturbPlayer } from "./VturbPlayer";
 import type { PurchaseModule } from "./types";
 
 interface MediaPlayerProps {
@@ -44,6 +45,9 @@ export const MediaPlayer = ({
   }
 
   if (module.has_video && module.video_url) {
+    if (module.video_provider === "vturb") {
+      return <VturbPlayer embedCode={module.video_url} title={module.module_name} className={className} />;
+    }
     return (
       <YouTubePlayer
         url={module.video_url}

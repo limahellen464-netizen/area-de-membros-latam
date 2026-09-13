@@ -6,6 +6,7 @@ import type { PurchaseModule } from "./types";
 const module: PurchaseModule = {
   id: "lesson-2",
   module_name: "A Química do Amor",
+  pdf_url: null,
   completed: false,
   has_video: true,
   has_audio: false,

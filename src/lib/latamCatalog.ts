@@ -1,3 +1,8 @@
+import type { Purchase } from "@/components/premium/types";
+import type { SectionKind } from "@/config/courseSections";
+import { resolveProductImage } from "./productImageOverrides";
+import { resolveSectionImage } from "./sectionImageOverrides";
+
 export const HOMOLOGATION_EMAIL = "preview.miembros@recuperaatuexahora.test";
 
 export type LatamLesson = {
@@ -220,3 +225,54 @@ export const findProductBySlug = (slug: string | undefined) =>
 
 export const countLessons = (product: LatamProduct) =>
   product.sections.reduce((total, section) => total + section.lessons.length, 0);
+
+const assetUrl = (path: string) =>
+  `${import.meta.env.BASE_URL}${path.replace(/^\/+/, "")}`;
+
+/**
+ * Fallback usado apenas quando VITE_SUPABASE_URL não está configurada
+ * (dev local sem backend). Sem Supabase não há como saber o que cada
+ * e-mail comprou de verdade, então os flags `unlocked` abaixo são fixos
+ * pra todo mundo — isso é só uma prévia estática, não o fluxo real.
+ */
+export const toPurchaseFromCatalogProduct = (
+  product: LatamProduct,
+  completedLessonIds: Set<string>,
+): Purchase => ({
+  id: product.slug,
+  product_settings_id: product.id,
+  product_name: product.title,
+  product_description: product.description,
+  product_image_url: resolveProductImage(product.id, assetUrl(product.imageUrl)),
+  access_url: `/miembros/producto/${product.slug}`,
+  checkout_url: product.kind === "kit" ? "pending-latam-checkout" : "pending-latam",
+  purchase_date: "2026-08-10T00:00:00.000Z",
+  amount: null,
+  purchased: product.unlocked,
+  pdf_url: null,
+  modules: product.sections.flatMap((section) =>
+    section.lessons.map((lesson) => ({
+      id: lesson.id,
+      module_name: lesson.title,
+      pdf_url: null,
+      has_pdf: lesson.type === "pdf",
+      video_url: null,
+      has_video: lesson.type === "video",
+      audio_url: null,
+      has_audio: lesson.type === "audio",
+      is_published: true,
+      media_status: "in_production",
+      completed: completedLessonIds.has(lesson.id),
+    })),
+  ),
+  sections: product.sections.map((section) => ({
+    key: section.slug,
+    number: section.number,
+    title: section.title,
+    subtitle: section.description,
+    kind: (section.number === "01" ? "welcome" : "track") as SectionKind,
+    status: "available",
+    moduleIds: section.lessons.map((lesson) => lesson.id),
+    image_url: resolveSectionImage(product.id, section.slug, null),
+  })),
+});

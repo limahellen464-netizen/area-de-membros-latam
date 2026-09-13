@@ -7,6 +7,7 @@ export interface PurchaseModule {
   has_pdf: boolean;
   video_url: string | null;
   has_video: boolean;
+  video_provider?: "youtube" | "vturb";
   audio_url?: string | null;
   has_audio?: boolean;
   is_published?: boolean;

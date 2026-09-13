@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,95 +8,36 @@ import logo from "@/assets/logo.png";
 import { PremiumCard, PremiumHeader } from "@/components/premium";
 import type { Purchase } from "@/components/premium/types";
 import { CONSULTORIA_FORM_FALLBACK_URL } from "@/config/courseSections";
-import {
-  countLessons,
-  HOMOLOGATION_EMAIL,
-  latamProducts,
-  type LatamLesson,
-  type LatamProduct,
-  type LatamSection,
-} from "@/lib/latamCatalog";
-import {
-  firstNameFromEmail,
-  hasHomologationAccess,
-  memberEmailKey,
-  normalizeEmail,
-  readProgress,
-} from "@/lib/latamAccess";
-import { hasSupabaseMembersApi, verifyLatamMemberAccess } from "@/lib/latamMembersApi";
-import { resolveProductImage } from "@/lib/productImageOverrides";
-import { resolveSectionImage } from "@/lib/sectionImageOverrides";
+import { firstNameFromEmail, memberEmailKey, normalizeEmail } from "@/lib/latamAccess";
+import { loadLatamPurchases } from "@/lib/latamMembersApi";
 
 const assetUrl = (path: string) =>
   `${import.meta.env.BASE_URL}${path.replace(/^\/+/, "")}`;
-
-type LessonEntry = {
-  product: LatamProduct;
-  section: LatamSection;
-  lesson: LatamLesson;
-  index: number;
-};
-
-const flattenProductLessons = (product: LatamProduct): LessonEntry[] =>
-  product.sections.flatMap((section) =>
-    section.lessons.map((lesson, index) => ({ product, section, lesson, index })),
-  );
-
-const getLessonPath = (product: LatamProduct, lesson: LatamLesson) =>
-  `/producto/${product.slug}/clase/${lesson.slug}`;
-
-const toPurchase = (product: LatamProduct, completed: Set<string>): Purchase => ({
-  id: product.slug,
-  product_settings_id: product.id,
-  product_name: product.title,
-  product_description: product.description,
-  product_image_url: resolveProductImage(product.id, assetUrl(product.imageUrl)),
-  access_url: `/miembros/producto/${product.slug}`,
-  checkout_url: product.kind === "kit" ? "pending-latam-checkout" : "pending-latam",
-  purchase_date: "2026-08-10T00:00:00.000Z",
-  amount: null,
-  purchased: product.unlocked,
-  pdf_url: null,
-  modules: flattenProductLessons(product).map(({ lesson }) => ({
-    id: lesson.slug,
-    module_name: lesson.title,
-    pdf_url: null,
-    has_pdf: lesson.type === "pdf",
-    video_url: null,
-    has_video: lesson.type === "video",
-    audio_url: null,
-    has_audio: lesson.type === "audio",
-    is_published: true,
-    media_status: "in_production",
-    completed: completed.has(lesson.id),
-  })),
-  sections: product.sections.map((section) => ({
-    key: section.slug,
-    number: section.number,
-    title: section.title,
-    subtitle: section.description,
-    kind: section.number === "01" ? "welcome" : "track",
-    status: "available",
-    moduleIds: section.lessons.map((lesson) => lesson.slug),
-    image_url: resolveSectionImage(product.id, section.slug, null),
-  })),
-});
 
 const Index = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [currentEmail, setCurrentEmail] = useState("");
   const [buyerName, setBuyerName] = useState("");
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(false);
-  const progress = useMemo(() => readProgress(currentEmail), [currentEmail]);
+  const [loadingSession, setLoadingSession] = useState(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(memberEmailKey);
-    if (saved) {
-      setCurrentEmail(saved);
-      setEmail(saved);
-      setBuyerName(firstNameFromEmail(saved));
-    }
+    if (!saved) return;
+    setEmail(saved);
+    setLoadingSession(true);
+    loadLatamPurchases(saved)
+      .then(({ buyerName: resolvedName, purchases: resolvedPurchases }) => {
+        setCurrentEmail(saved);
+        setBuyerName(resolvedName || firstNameFromEmail(saved));
+        setPurchases(resolvedPurchases);
+      })
+      .catch(() => {
+        window.localStorage.removeItem(memberEmailKey);
+      })
+      .finally(() => setLoadingSession(false));
   }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -105,25 +46,12 @@ const Index = () => {
     setLoading(true);
 
     try {
-      let resolvedBuyerName: string | null = null;
-      if (hasSupabaseMembersApi()) {
-        const access = await verifyLatamMemberAccess(normalized);
-        if (access.purchasedCount <= 0) {
-          toast.error("No encontramos una compra activa para este e-mail.");
-          return;
-        }
-        resolvedBuyerName = access.buyer_name;
-      } else {
-        await new Promise((resolve) => window.setTimeout(resolve, 250));
-        if (!hasHomologationAccess(normalized)) {
-          toast.error("Este preview solo está liberado para el e-mail de homologación.");
-          return;
-        }
-      }
-
+      const { buyerName: resolvedName, purchases: resolvedPurchases } =
+        await loadLatamPurchases(normalized);
       window.localStorage.setItem(memberEmailKey, normalized);
       setCurrentEmail(normalized);
-      setBuyerName(resolvedBuyerName || firstNameFromEmail(normalized));
+      setBuyerName(resolvedName || firstNameFromEmail(normalized));
+      setPurchases(resolvedPurchases);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No fue posible validar el acceso.");
     } finally {
@@ -136,6 +64,7 @@ const Index = () => {
     setCurrentEmail("");
     setBuyerName("");
     setEmail("");
+    setPurchases([]);
   };
 
   if (!currentEmail) {
@@ -173,11 +102,12 @@ const Index = () => {
                 <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-accent" />
                 <Input
                   type="email"
-                  placeholder={HOMOLOGATION_EMAIL}
+                  placeholder="tu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="border-accent/30 bg-background/60 pl-10 focus-visible:ring-accent"
                   required
+                  disabled={loadingSession}
                 />
               </div>
               <p className="px-1 text-xs leading-relaxed text-muted-foreground">
@@ -189,9 +119,9 @@ const Index = () => {
                 type="submit"
                 size="lg"
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={loading}
+                disabled={loading || loadingSession}
               >
-                {loading ? (
+                {loading || loadingSession ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Buscando...
@@ -208,16 +138,15 @@ const Index = () => {
   }
 
   const firstName = buyerName || firstNameFromEmail(currentEmail);
-  const mainProduct = latamProducts[0]!;
-  const purchases = latamProducts.map((product) => toPurchase(product, progress));
-  const mainPurchase = purchases[0]!;
+  const mainPurchase = purchases[0];
   const ownedProducts = purchases.filter(
-    (purchase) => purchase.purchased && purchase.product_settings_id !== mainProduct.id,
+    (purchase, index) => purchase.purchased && index !== 0,
   );
   const lockedProducts = purchases.filter((purchase) => !purchase.purchased);
+  const purchasedCount = purchases.filter((purchase) => purchase.purchased).length;
 
-  const goToLesson = (product: LatamProduct, lesson: LatamLesson) => {
-    navigate(getLessonPath(product, lesson));
+  const goToLesson = (purchase: Purchase, moduleId: string) => {
+    navigate(`/producto/${purchase.id}/clase/${moduleId}`);
   };
 
   return (
@@ -225,8 +154,8 @@ const Index = () => {
       <PremiumHeader
         buyerName={firstName}
         email={currentEmail}
-        purchasedCount={latamProducts.filter((product) => product.unlocked).length}
-        totalCount={latamProducts.length}
+        purchasedCount={purchasedCount}
+        totalCount={purchases.length}
         onLogout={handleLogout}
       />
 
@@ -271,60 +200,62 @@ const Index = () => {
       </section>
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-        <section className="mb-8 sm:mb-10">
-          <div className="overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-[0_22px_70px_-42px_hsl(var(--primary)/0.65)]">
-            <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
-              <button
-                type="button"
-                onClick={() => goToLesson(mainProduct, mainProduct.sections[0]!.lessons[0]!)}
-                className="group relative min-h-[260px] overflow-hidden bg-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-[320px] lg:min-h-full"
-              >
-                <img
-                  src={mainPurchase.product_image_url}
-                  alt={mainPurchase.product_name}
-                  className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
-                  loading="eager"
-                  fetchPriority="high"
-                />
-                <div
-                  aria-hidden
-                  className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent"
-                />
-                <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-7">
-                  <h3 className="max-w-md font-serif text-2xl font-bold leading-tight sm:text-3xl">
-                    El Código de la Reconquista
+        {mainPurchase && (
+          <section className="mb-8 sm:mb-10">
+            <div className="overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-[0_22px_70px_-42px_hsl(var(--primary)/0.65)]">
+              <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const firstModuleId = mainPurchase.sections?.[0]?.moduleIds?.[0];
+                    if (firstModuleId) goToLesson(mainPurchase, firstModuleId);
+                    else navigate(`/producto/${mainPurchase.id}`);
+                  }}
+                  className="group relative min-h-[260px] overflow-hidden bg-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-[320px] lg:min-h-full"
+                >
+                  <img
+                    src={mainPurchase.product_image_url}
+                    alt={mainPurchase.product_name}
+                    className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
+                    loading="eager"
+                    fetchPriority="high"
+                  />
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent"
+                  />
+                  <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-7">
+                    <h3 className="max-w-md font-serif text-2xl font-bold leading-tight sm:text-3xl">
+                      {mainPurchase.product_name}
+                    </h3>
+                  </div>
+                </button>
+
+                <div className="p-5 sm:p-7">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">
+                    Tu jornada
+                  </p>
+                  <h3 className="mt-2 text-2xl font-extrabold leading-tight tracking-tight text-foreground sm:text-3xl">
+                    Inicia {mainPurchase.product_name}
                   </h3>
-                </div>
-              </button>
+                  <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                    {mainPurchase.product_description}
+                  </p>
 
-              <div className="p-5 sm:p-7">
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">
-                  Tu jornada
-                </p>
-                <h3 className="mt-2 text-2xl font-extrabold leading-tight tracking-tight text-foreground sm:text-3xl">
-                  Inicia El Código de la Reconquista
-                </h3>
-                <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
-                  Con técnicas respaldadas por estudios científicos, este método enseña cómo
-                  reconstruir la atracción natural entre tú y tu ex, eliminando cualquier
-                  resistencia que ella pueda tener.
-                </p>
-
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  {mainProduct.sections.map((section) => {
-                    const sectionImage = resolveSectionImage(mainProduct.id, section.slug, null);
-                    const firstLesson = section.lessons[0];
-
-                    return (
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    {(mainPurchase.sections || []).map((section) => (
                       <button
-                        key={section.id}
+                        key={section.key}
                         type="button"
-                        onClick={() => firstLesson && goToLesson(mainProduct, firstLesson)}
+                        onClick={() => {
+                          const firstModuleId = section.moduleIds?.[0];
+                          if (firstModuleId) goToLesson(mainPurchase, firstModuleId);
+                        }}
                         className="group relative min-h-[140px] overflow-hidden rounded-xl border border-primary/15 bg-background p-4 text-left text-white shadow-sm transition hover:-translate-y-0.5 hover:border-primary/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
-                        {sectionImage && (
+                        {section.image_url && (
                           <img
-                            src={sectionImage}
+                            src={section.image_url}
                             alt=""
                             aria-hidden
                             className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
@@ -349,13 +280,13 @@ const Index = () => {
                           </div>
                         </div>
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         <section className="mb-8 sm:mb-10">
           <a
@@ -440,11 +371,7 @@ const Index = () => {
             </h3>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {lockedProducts.map((purchase) => (
-                <PremiumCard
-                  key={purchase.id}
-                  purchase={purchase}
-                  variant={purchase.product_settings_id === latamProducts[2]?.id ? "soon" : "locked"}
-                />
+                <PremiumCard key={purchase.id} purchase={purchase} variant="locked" />
               ))}
             </div>
           </section>
