@@ -1,0 +1,18 @@
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    }
+  ],
+  "redirects": [
+    { "source": "/", "destination": "/miembros", "permanent": false }
+  ],
+  "rewrites": [
+    { "source": "/miembros/assets/:path*", "destination": "/assets/:path*" },
+    { "source": "/miembros/(.*)", "destination": "/index.html" },
+    { "source": "/miembros", "destination": "/index.html" }
+  ]
+}
