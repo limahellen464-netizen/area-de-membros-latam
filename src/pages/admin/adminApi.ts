@@ -288,6 +288,11 @@ export interface AdminQuizFunnelAnalytics {
   }>;
 }
 
+export interface AdminSettingsResponse {
+  perfectpay_webhook_url: string;
+  perfectpay_webhook_token: string | null;
+}
+
 export class AdminApiAuthError extends Error {
   constructor(message: string = "Senha incorreta") {
     super(message);

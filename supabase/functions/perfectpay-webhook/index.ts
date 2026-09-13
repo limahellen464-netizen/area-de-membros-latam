@@ -4,8 +4,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
  * Perfect Pay postback/webhook receiver.
  *
  * Configure in Perfect Pay: Ferramentas > Postback - Webhook, one entry per
- * product (or "todos os eventos"), URL = this function's URL, and set the
- * same shared token below in the PERFECTPAY_WEBHOOK_TOKEN secret.
+ * product (or "todos os eventos"), URL + token both shown in the admin
+ * panel at /admin/configuracoes (admin_settings.perfectpay.webhook_token —
+ * regenerate it from that screen if it ever leaks).
  *
  * Payload reference (help.perfectpay.com.br/article/597): the body carries
  * `token`, `code` (unique sale code), `sale_amount`, `sale_status_enum`,
@@ -60,9 +61,17 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const webhookToken = Deno.env.get("PERFECTPAY_WEBHOOK_TOKEN");
   if (!supabaseUrl || !serviceRoleKey) return json({ error: "Missing Supabase env" }, 500);
-  if (!webhookToken) return json({ error: "PERFECTPAY_WEBHOOK_TOKEN not configured" }, 500);
+
+  const db = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
+
+  const { data: tokenSetting } = await db
+    .from("admin_settings")
+    .select("value")
+    .eq("key", "perfectpay.webhook_token")
+    .maybeSingle();
+  const webhookToken = tokenSetting?.value as string | undefined;
+  if (!webhookToken) return json({ error: "Webhook token not initialized (run migrations)" }, 500);
 
   const payload = (await req.json().catch(() => null)) as PerfectPayPayload | null;
   if (!payload) return json({ error: "Invalid JSON body" }, 400);
@@ -78,8 +87,6 @@ Deno.serve(async (req) => {
   const buyerName = payload.customer?.full_name || null;
 
   if (!saleCode) return json({ error: "Missing sale code" }, 400);
-
-  const db = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 
   // Idempotency: one row per (sale code, status). Perfect Pay retries the
   // exact same event on timeouts; a genuine status change (e.g. approved

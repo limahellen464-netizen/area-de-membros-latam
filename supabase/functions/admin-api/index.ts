@@ -29,15 +29,29 @@ const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const PDF_MAX_BYTES = 20 * 1024 * 1024;
 const AUDIO_MAX_BYTES = 25 * 1024 * 1024;
 
+const sha256Hex = async (text: string): Promise<string> => {
+  const data = new TextEncoder().encode(text);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+};
+
+const randomToken = () => {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const adminPassword = Deno.env.get("ADMIN_PASSWORD");
   if (!supabaseUrl || !serviceRoleKey) return json({ error: "Missing Supabase env" }, 500);
-  if (!adminPassword) return json({ error: "ADMIN_PASSWORD not configured" }, 500);
 
   const db = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 
@@ -57,10 +71,53 @@ Deno.serve(async (req) => {
     action = String(body.action || "");
   }
 
-  if (password !== adminPassword) return json({ error: "Senha incorreta" }, 401);
+  const { data: passwordSetting } = await db
+    .from("admin_settings")
+    .select("value")
+    .eq("key", "admin.password_hash")
+    .maybeSingle();
+  const storedHash = passwordSetting?.value as string | undefined;
+  if (!storedHash) return json({ error: "Admin password not initialized (run migrations)" }, 500);
+  if ((await sha256Hex(password)) !== storedHash) return json({ error: "Senha incorreta" }, 401);
 
   try {
     switch (action) {
+      case "change_password": {
+        const newPassword = String(body.new_password || "");
+        if (newPassword.length < 8) {
+          return json({ error: "A nova senha precisa ter no mínimo 8 caracteres" }, 400);
+        }
+        const newHash = await sha256Hex(newPassword);
+        const { error } = await db
+          .from("admin_settings")
+          .update({ value: newHash, updated_at: new Date().toISOString() })
+          .eq("key", "admin.password_hash");
+        if (error) throw error;
+        return json({ success: true });
+      }
+
+      case "get_settings": {
+        const { data: tokenSetting } = await db
+          .from("admin_settings")
+          .select("value")
+          .eq("key", "perfectpay.webhook_token")
+          .maybeSingle();
+        return json({
+          perfectpay_webhook_url: `${supabaseUrl}/functions/v1/perfectpay-webhook`,
+          perfectpay_webhook_token: tokenSetting?.value || null,
+        });
+      }
+
+      case "regenerate_perfectpay_token": {
+        const newToken = randomToken();
+        const { error } = await db
+          .from("admin_settings")
+          .update({ value: newToken, updated_at: new Date().toISOString() })
+          .eq("key", "perfectpay.webhook_token");
+        if (error) throw error;
+        return json({ success: true, perfectpay_webhook_token: newToken });
+      }
+
       // ===================================================================
       // Products
       // ===================================================================
