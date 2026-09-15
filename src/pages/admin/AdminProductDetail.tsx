@@ -20,6 +20,7 @@ import {
   ArrowUp,
   Eye,
   EyeOff,
+  ImageIcon,
   Loader2,
   Package,
   Pencil,
@@ -32,6 +33,7 @@ import {
 import { toast } from "sonner";
 import {
   adminApi,
+  adminUploadModuleCoverImage,
   adminUploadProductImage,
   AdminApiAuthError,
   type AdminProduct,
@@ -73,6 +75,10 @@ const AdminProductDetail = () => {
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState(emptyModuleDraft());
   const [savingModule, setSavingModule] = useState(false);
+
+  const [uploadingModuleImageId, setUploadingModuleImageId] = useState<string | null>(null);
+  const [pendingImageModuleId, setPendingImageModuleId] = useState<string | null>(null);
+  const moduleImageInputRef = useRef<HTMLInputElement>(null);
 
   const handleAuthError = useCallback(() => {
     logout();
@@ -199,6 +205,34 @@ const AdminProductDetail = () => {
       toast.error((err as Error).message);
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  const handleUploadModuleImage = async (moduleId: string, file: File) => {
+    if (!password) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("Apenas JPEG, PNG ou WebP.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Imagem acima de 5MB.");
+      return;
+    }
+    setUploadingModuleImageId(moduleId);
+    try {
+      const data = await adminUploadModuleCoverImage({ password, moduleId, file });
+      setProduct({
+        ...product,
+        product_modules: product.product_modules.map((m) =>
+          m.id === moduleId ? { ...m, cover_image_url: data.image_url } : m,
+        ),
+      });
+      toast.success("Imagem da aula enviada!");
+    } catch (err) {
+      if (err instanceof AdminApiAuthError) return handleAuthError();
+      toast.error((err as Error).message);
+    } finally {
+      setUploadingModuleImageId(null);
     }
   };
 
@@ -419,6 +453,18 @@ const AdminProductDetail = () => {
           if (imageInputRef.current) imageInputRef.current.value = "";
         }}
       />
+      <input
+        ref={moduleImageInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file && pendingImageModuleId) handleUploadModuleImage(pendingImageModuleId, file);
+          setPendingImageModuleId(null);
+          if (moduleImageInputRef.current) moduleImageInputRef.current.value = "";
+        }}
+      />
 
       <div>
         <Button
@@ -601,13 +647,38 @@ const AdminProductDetail = () => {
                             <ArrowDown className="h-3 w-3" />
                           </Button>
                         </div>
-                        <Video className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        {module.cover_image_url ? (
+                          <img
+                            src={module.cover_image_url}
+                            alt=""
+                            className="h-8 w-8 shrink-0 rounded object-cover"
+                          />
+                        ) : (
+                          <Video className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        )}
                         <span className="flex-1 truncate text-sm text-foreground">{module.module_name}</span>
                         {module.video_url && (
                           <Badge variant="outline" className="text-[10px]">
                             {module.video_provider === "vturb" ? "VTurb" : "YouTube"}
                           </Badge>
                         )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0"
+                          title="Imagem de capa da aula"
+                          disabled={uploadingModuleImageId === module.id}
+                          onClick={() => {
+                            setPendingImageModuleId(module.id);
+                            moduleImageInputRef.current?.click();
+                          }}
+                        >
+                          {uploadingModuleImageId === module.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <ImageIcon className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"

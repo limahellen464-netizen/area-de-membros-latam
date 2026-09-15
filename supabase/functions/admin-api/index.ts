@@ -159,10 +159,17 @@ Deno.serve(async (req) => {
             (a: { display_order: number }, b: { display_order: number }) =>
               a.display_order - b.display_order,
           ),
-          product_modules: (product.product_modules || []).sort(
-            (a: { module_order: number }, b: { module_order: number }) =>
-              a.module_order - b.module_order,
-          ),
+          product_modules: (product.product_modules || [])
+            .sort(
+              (a: { module_order: number }, b: { module_order: number }) =>
+                a.module_order - b.module_order,
+            )
+            .map((module: { cover_image_path: string | null }) => ({
+              ...module,
+              cover_image_url: module.cover_image_path
+                ? db.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(module.cover_image_path).data.publicUrl
+                : null,
+            })),
         }));
         return json({ products });
       }
@@ -253,6 +260,7 @@ Deno.serve(async (req) => {
             description: String(body.description || ""),
             section_number: String(body.section_number || String(order + 1).padStart(2, "0")),
             display_order: order,
+            status: "available",
           })
           .select()
           .single();
@@ -321,7 +329,7 @@ Deno.serve(async (req) => {
             video_provider: videoProvider,
             video_url: videoUrl,
             has_video: Boolean(videoUrl),
-            is_published: Boolean(body.is_published),
+            is_published: body.is_published !== false,
           })
           .select()
           .single();

@@ -30,6 +30,7 @@ export interface AdminModule {
   pdf_file_path: string | null;
   audio_file_path: string | null;
   cover_image_path: string | null;
+  cover_image_url: string | null;
   has_video: boolean;
   has_pdf: boolean;
   has_audio: boolean;
