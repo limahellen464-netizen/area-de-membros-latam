@@ -425,6 +425,8 @@ Deno.serve(async (req) => {
     }
   } catch (error) {
     console.error("admin-api error", error);
-    return json({ error: error instanceof Error ? error.message : "Erro interno" }, 500);
+    const message =
+      (error as { message?: string } | null)?.message || String(error) || "Erro interno";
+    return json({ error: message }, 500);
   }
 });
