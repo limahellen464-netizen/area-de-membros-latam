@@ -141,6 +141,364 @@ Deno.serve(async (req) => {
         return json({ success: true });
       }
 
+      case "update_site_setting": {
+        const key = String(body.key || "");
+        const value = String(body.value ?? "");
+        if (!key.startsWith("site.")) return json({ error: "key inválida" }, 400);
+        const { error } = await db
+          .from("admin_settings")
+          .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+        if (error) throw error;
+        return json({ success: true });
+      }
+
+      case "remove_hero_banner_image": {
+        const { data: existing } = await db
+          .from("admin_settings")
+          .select("value")
+          .eq("key", "site.hero_banner_json")
+          .maybeSingle();
+        let config: Record<string, unknown> = {};
+        try {
+          config = existing?.value ? JSON.parse(existing.value as string) : {};
+        } catch {
+          config = {};
+        }
+        config.image_url = "";
+        const { error } = await db
+          .from("admin_settings")
+          .upsert(
+            { key: "site.hero_banner_json", value: JSON.stringify(config), updated_at: new Date().toISOString() },
+            { onConflict: "key" },
+          );
+        if (error) throw error;
+        return json({ success: true });
+      }
+
+      // ===================================================================
+      // Analytics / diagnostics
+      // ===================================================================
+      case "get_analytics": {
+        const period = String(body.period || "7d");
+        const days = period === "90d" ? 90 : period === "30d" ? 30 : 7;
+        const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+        const { data: logs, error } = await db
+          .from("access_logs")
+          .select("email, action, created_at, metadata")
+          .gte("created_at", since)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+
+        const loginLogs = (logs || []).filter((l) => l.action === "login");
+        const dailyLogins: Record<string, number> = {};
+        for (const l of loginLogs) {
+          const day = String(l.created_at).slice(0, 10);
+          dailyLogins[day] = (dailyLogins[day] || 0) + 1;
+        }
+
+        return json({
+          totalLogins: loginLogs.length,
+          uniqueUsers: new Set(loginLogs.map((l) => l.email)).size,
+          // Not tracked anywhere in the current frontend (no view/click
+          // instrumentation on product cards or checkout links) — honest
+          // zero rather than a fabricated number.
+          productViews: 0,
+          productClicks: 0,
+          checkoutClicks: 0,
+          dailyLogins,
+          recentAccess: (logs || [])
+            .slice(0, 20)
+            .map((l) => ({ email: l.email, created_at: l.created_at, metadata: l.metadata })),
+        });
+      }
+
+      case "get_module_completions": {
+        const { data: completions, error } = await db
+          .from("module_completions")
+          .select("email, module_id, completed_at, product_settings_id")
+          .order("completed_at", { ascending: false });
+        if (error) throw error;
+
+        const { data: modules } = await db
+          .from("product_modules")
+          .select("id, module_name, product_settings_id, has_video, is_published");
+        const { data: products } = await db.from("product_settings").select("id, product_name");
+
+        const moduleById = new Map((modules || []).map((m) => [m.id, m]));
+        const productById = new Map((products || []).map((p) => [p.id, p]));
+
+        const totalModulesAvailable = (modules || []).filter((m) => m.is_published).length;
+        const videoModulesCount = (modules || []).filter((m) => m.has_video).length;
+
+        const userCompletions: Record<
+          string,
+          { total: number; modules: { name: string; product: string; completed_at: string }[] }
+        > = {};
+        const dailyCompletions: Record<string, number> = {};
+        const moduleCompletionCounts = new Map<string, number>();
+        const productCompletionCounts = new Map<string, number>();
+        let todayCompletions = 0;
+        let todayVideoCompletions = 0;
+        let totalVideoCompletions = 0;
+        const videoCompletionUsers = new Set<string>();
+        const todayStr = new Date().toISOString().slice(0, 10);
+
+        for (const c of completions || []) {
+          const mod = moduleById.get(c.module_id);
+          const prodName = productById.get(c.product_settings_id)?.product_name || "Produto removido";
+          const modName = mod?.module_name || "Aula removida";
+
+          if (!userCompletions[c.email]) userCompletions[c.email] = { total: 0, modules: [] };
+          userCompletions[c.email].total += 1;
+          userCompletions[c.email].modules.push({ name: modName, product: prodName, completed_at: c.completed_at });
+
+          const day = String(c.completed_at).slice(0, 10);
+          dailyCompletions[day] = (dailyCompletions[day] || 0) + 1;
+          if (day === todayStr) todayCompletions += 1;
+
+          moduleCompletionCounts.set(c.module_id, (moduleCompletionCounts.get(c.module_id) || 0) + 1);
+          if (c.product_settings_id) {
+            productCompletionCounts.set(
+              c.product_settings_id,
+              (productCompletionCounts.get(c.product_settings_id) || 0) + 1,
+            );
+          }
+
+          if (mod?.has_video) {
+            totalVideoCompletions += 1;
+            videoCompletionUsers.add(c.email);
+            if (day === todayStr) todayVideoCompletions += 1;
+          }
+        }
+
+        const moduleStats = Array.from(moduleCompletionCounts.entries()).map(([id, completions]) => {
+          const mod = moduleById.get(id);
+          return {
+            id,
+            name: mod?.module_name || "Aula removida",
+            product: productById.get(mod?.product_settings_id || "")?.product_name || "",
+            hasVideo: !!mod?.has_video,
+            completions,
+          };
+        });
+
+        const productStats = Array.from(productCompletionCounts.entries()).map(([id, totalCompletions]) => ({
+          name: productById.get(id)?.product_name || "Produto removido",
+          totalCompletions,
+        }));
+
+        return json({
+          userCompletions,
+          totalModulesAvailable,
+          dailyCompletions,
+          moduleStats,
+          productStats,
+          todayCompletions,
+          todayVideoCompletions,
+          totalVideoCompletions,
+          videoCompletionUsers: videoCompletionUsers.size,
+          videoModulesCount,
+        });
+      }
+
+      case "diagnose_member_access": {
+        const email = String(body.email || "").trim().toLowerCase();
+        if (!email) return json({ error: "email é obrigatório" }, 400);
+
+        const { data: purchases } = await db
+          .from("purchases")
+          .select("*, product_settings(product_name)")
+          .eq("email", email);
+
+        const { data: allProducts } = await db
+          .from("product_settings")
+          .select("id, product_name, gateway_product_id, is_visible")
+          .order("display_order", { ascending: true });
+
+        const activePurchaseProductIds = new Set(
+          (purchases || []).filter((p) => p.status === "active").map((p) => p.product_settings_id),
+        );
+
+        const unlockedProducts = (allProducts || [])
+          .filter((p) => activePurchaseProductIds.has(p.id))
+          .map((p) => ({
+            id: p.id,
+            gateway_product_id: p.gateway_product_id,
+            product_name: p.product_name,
+            visible: p.is_visible,
+          }));
+
+        const availableProducts = (allProducts || []).map((p) => ({
+          id: p.id,
+          gateway_product_id: p.gateway_product_id,
+          product_name: p.product_name,
+          visible: p.is_visible,
+          alreadyUnlocked: activePurchaseProductIds.has(p.id),
+        }));
+
+        const { data: completions } = await db
+          .from("module_completions")
+          .select("module_id, completed_at, product_settings_id")
+          .eq("email", email);
+
+        const { data: recentAccess } = await db
+          .from("access_logs")
+          .select("action, metadata, created_at")
+          .eq("email", email)
+          .order("created_at", { ascending: false })
+          .limit(20);
+
+        const issues: string[] = [];
+        if ((purchases || []).length === 0) issues.push("Nenhuma compra encontrada para este e-mail.");
+        const unmapped = (purchases || []).filter((p) => !p.product_settings_id);
+        if (unmapped.length > 0) issues.push(`${unmapped.length} compra(s) sem produto mapeado.`);
+
+        const { data: modules } = await db
+          .from("product_modules")
+          .select(
+            "id, module_name, module_order, section_id, product_settings_id, has_video, has_pdf, has_audio, is_published",
+          );
+        const { data: sections } = await db.from("product_sections").select("id, title, section_number");
+        const sectionById = new Map((sections || []).map((s) => [s.id, s]));
+        const completionByModule = new Map((completions || []).map((c) => [c.module_id, c.completed_at]));
+
+        const productsProgress = (allProducts || [])
+          .filter((p) => activePurchaseProductIds.has(p.id))
+          .map((p) => {
+            const productModules = (modules || []).filter(
+              (m) => m.product_settings_id === p.id && m.is_published,
+            );
+            const lessons = productModules
+              .sort((a, b) => a.module_order - b.module_order)
+              .map((m, idx) => {
+                const completedAt = (completionByModule.get(m.id) as string | undefined) || null;
+                const section = m.section_id ? sectionById.get(m.section_id) : null;
+                return {
+                  module_id: m.id,
+                  module_name: m.module_name,
+                  section_id: m.section_id,
+                  section_number: section?.section_number || null,
+                  section_title: section?.title || null,
+                  lesson_number: idx + 1,
+                  has_video: m.has_video,
+                  has_audio: m.has_audio,
+                  has_pdf: m.has_pdf,
+                  viewed: !!completedAt,
+                  view_count: completedAt ? 1 : 0,
+                  first_viewed_at: completedAt,
+                  last_viewed_at: completedAt,
+                  completed: !!completedAt,
+                  completed_at: completedAt,
+                };
+              });
+            const completedLessons = lessons.filter((l) => l.completed).length;
+            const lastLesson =
+              lessons
+                .filter((l) => l.completed_at)
+                .sort((a, b) => (b.completed_at! > a.completed_at! ? 1 : -1))[0] || null;
+            return {
+              product_id: p.id,
+              gateway_product_id: p.gateway_product_id,
+              product_name: p.product_name,
+              total_lessons: lessons.length,
+              viewed_lessons: completedLessons,
+              completed_lessons: completedLessons,
+              progress_percent: lessons.length > 0 ? Math.round((completedLessons / lessons.length) * 100) : 0,
+              last_lesson: lastLesson ? { ...lastLesson, product_name: p.product_name } : null,
+              lessons,
+            };
+          });
+
+        const totalLessons = productsProgress.reduce((sum, p) => sum + p.total_lessons, 0);
+        const viewedLessons = productsProgress.reduce((sum, p) => sum + p.viewed_lessons, 0);
+        const completedLessonsTotal = productsProgress.reduce((sum, p) => sum + p.completed_lessons, 0);
+        const allLastLessons = productsProgress.map((p) => p.last_lesson).filter(Boolean) as Array<{
+          completed_at: string | null;
+        }>;
+        allLastLessons.sort((a, b) => (String(b.completed_at) > String(a.completed_at) ? 1 : -1));
+
+        const lastLoginLog = (recentAccess || []).find((l) => l.action === "login");
+
+        const studentProgress = {
+          total_lessons: totalLessons,
+          viewed_lessons: viewedLessons,
+          completed_lessons: completedLessonsTotal,
+          progress_percent: totalLessons > 0 ? Math.round((completedLessonsTotal / totalLessons) * 100) : 0,
+          last_access_at: recentAccess?.[0]?.created_at || null,
+          last_login_at: lastLoginLog?.created_at || null,
+          last_lesson: allLastLessons[0] || null,
+          consultoria_clicks: 0,
+          last_consultoria_click_at: null,
+          products: productsProgress,
+        };
+
+        return json({
+          email,
+          activePurchases: activePurchaseProductIds.size,
+          moduleCompletionsCount: (completions || []).length,
+          issues,
+          purchases: (purchases || []).map((p) => ({
+            buyer_email: p.email,
+            product_name:
+              (p as { product_settings?: { product_name?: string } }).product_settings?.product_name ||
+              "Desconhecido",
+            product_settings_id: p.product_settings_id,
+            mapped_product_name:
+              (p as { product_settings?: { product_name?: string } }).product_settings?.product_name || null,
+            mapped: !!p.product_settings_id,
+            gateway_product_id: null,
+            transaction_id: p.gateway_purchase_id || p.id,
+            status: p.status,
+            purchase_date: p.created_at,
+          })),
+          unlockedProducts,
+          availableProducts,
+          recentAccess: (recentAccess || []).map((l) => ({
+            action: l.action,
+            cakto_product_id: null,
+            metadata: l.metadata,
+            created_at: l.created_at,
+          })),
+          studentProgress,
+        });
+      }
+
+      case "grant_member_access": {
+        const email = String(body.email || "").trim().toLowerCase();
+        const productId = String(body.product_settings_id || "");
+        if (!email || !productId) return json({ error: "email e product_settings_id são obrigatórios" }, 400);
+        const { error } = await db.from("purchases").insert({
+          email,
+          product_settings_id: productId,
+          gateway_purchase_id: `manual-${productId}-${Date.now()}`,
+          status: "active",
+          metadata: { source: "admin_manual_grant" },
+        });
+        if (error) throw error;
+        return json({ success: true });
+      }
+
+      case "get_quiz_funnel_analytics": {
+        // quiz_funnel_events belongs to the old landing/VSL funnel app, not
+        // this members-area repo — nothing here writes to it, so this is
+        // an honest empty state rather than fabricated numbers.
+        const { count } = await db.from("quiz_funnel_events").select("id", { count: "exact", head: true });
+        return json({
+          period: String(body.period || "7d"),
+          totalEvents: count || 0,
+          uniqueSessions: 0,
+          stages: [],
+          questions: [],
+          profileSteps: [],
+          campaigns: [],
+          daily: [],
+          devices: [],
+          results: [],
+          recentSessions: [],
+        });
+      }
+
       // ===================================================================
       // Products
       // ===================================================================
@@ -415,6 +773,47 @@ Deno.serve(async (req) => {
           action === "product_image" ? "product_image_path" : action === "section_image" ? "image_path" : "cover_image_path";
         const { error: updateError } = await db.from(table).update({ [column]: filePath }).eq("id", targetId);
         if (updateError) throw updateError;
+
+        return json({ success: true, image_url: imageUrl, file_path: filePath });
+      }
+
+      case "hero_banner_image": {
+        if (!formData) return json({ error: "Upload requer multipart/form-data" }, 400);
+        const file = formData.get("image");
+        if (!(file instanceof File)) return json({ error: "Arquivo 'image' é obrigatório" }, 400);
+        if (file.size > IMAGE_MAX_BYTES) return json({ error: "Imagem excede 5MB" }, 400);
+        if (!file.type.startsWith("image/")) return json({ error: "Arquivo precisa ser uma imagem" }, 400);
+
+        const filePath = `site/hero-banner/${Date.now()}-${slugify(file.name)}`;
+        const { error: uploadError } = await db.storage
+          .from(PRODUCT_IMAGE_BUCKET)
+          .upload(filePath, await file.arrayBuffer(), { contentType: file.type, upsert: true });
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = db.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(filePath);
+        const imageUrl = publicUrlData.publicUrl;
+
+        const { data: existing } = await db
+          .from("admin_settings")
+          .select("value")
+          .eq("key", "site.hero_banner_json")
+          .maybeSingle();
+        let config: Record<string, unknown> = {};
+        try {
+          config = existing?.value ? JSON.parse(existing.value as string) : {};
+        } catch {
+          config = {};
+        }
+        config.image_url = imageUrl;
+        config.enabled = true;
+
+        const { error: upsertError } = await db
+          .from("admin_settings")
+          .upsert(
+            { key: "site.hero_banner_json", value: JSON.stringify(config), updated_at: new Date().toISOString() },
+            { onConflict: "key" },
+          );
+        if (upsertError) throw upsertError;
 
         return json({ success: true, image_url: imageUrl, file_path: filePath });
       }
