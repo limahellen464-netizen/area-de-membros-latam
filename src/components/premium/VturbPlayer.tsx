@@ -13,9 +13,29 @@ const extractPlayerId = (embedCode: string) => {
   return match?.[1] || null;
 };
 
+/**
+ * Bloco completo <vturb-smartplayer ...>...</vturb-smartplayer>, incluindo
+ * a <div class="vturb-player-placeholder"> interna que o VTurb usa pra
+ * reservar o box (aspect-ratio via padding-top) antes do player montar.
+ * Reconstruir só a tag sem esse filho deixava o player sem altura própria
+ * e sem o alvo que o script usa pra injetar o vídeo.
+ */
+const extractPlayerHtml = (embedCode: string) => {
+  const match = embedCode.match(/<vturb-smartplayer[\s\S]*?<\/vturb-smartplayer>/i);
+  return match?.[0] || null;
+};
+
+/**
+ * O snippet real do VTurb não usa <script src="...">: ele injeta um
+ * <script> inline que cria a tag via JS (`s.src = "https://...player.js"`).
+ * A extração antiga só procurava um atributo src literal e por isso nunca
+ * carregava o loader do player — o vídeo simplesmente nunca tocava.
+ */
 const extractScriptSrc = (embedCode: string) => {
-  const match = embedCode.match(/<script[^>]*\bsrc=["']([^"']+)["'][^>]*>/i);
-  return match?.[1] || null;
+  const attrMatch = embedCode.match(/<script[^>]*\bsrc=["']([^"']+)["']/i);
+  if (attrMatch) return attrMatch[1];
+  const inlineMatch = embedCode.match(/\.src\s*=\s*["']([^"']+)["']/i);
+  return inlineMatch?.[1] || null;
 };
 
 const loadedScripts = new Set<string>();
@@ -31,13 +51,14 @@ const loadVturbScript = (src: string) => {
 
 export const VturbPlayer = ({ embedCode, title, className }: VturbPlayerProps) => {
   const playerId = useMemo(() => extractPlayerId(embedCode), [embedCode]);
+  const playerHtml = useMemo(() => extractPlayerHtml(embedCode), [embedCode]);
   const scriptSrc = useMemo(() => extractScriptSrc(embedCode), [embedCode]);
 
   useEffect(() => {
     if (scriptSrc) loadVturbScript(scriptSrc);
   }, [scriptSrc]);
 
-  if (!playerId) {
+  if (!playerId || !playerHtml) {
     return (
       <div
         className={cn(
@@ -54,16 +75,15 @@ export const VturbPlayer = ({ embedCode, title, className }: VturbPlayerProps) =
   return (
     <div
       className={cn(
-        "relative aspect-video overflow-hidden rounded-xl border border-accent/20 bg-black shadow-[0_0_48px_-12px_hsl(var(--primary)/0.3)]",
+        "relative w-full max-w-full overflow-hidden rounded-xl border border-accent/20 bg-black shadow-[0_0_48px_-12px_hsl(var(--primary)/0.3)]",
         className,
       )}
       data-testid="vturb-player"
-    >
-      <vturb-smartplayer
-        id={playerId}
-        style={{ display: "block", margin: "0 auto", width: "100%", height: "100%" }}
-        aria-label={`Assistir aula: ${title}`}
-      />
-    </div>
+      aria-label={`Assistir aula: ${title}`}
+      // O placeholder interno do VTurb já reserva o aspect-ratio (16:9) via
+      // padding-top — não forçamos aspect-video aqui pra não duplicar/
+      // conflitar essa reserva de espaço.
+      dangerouslySetInnerHTML={{ __html: playerHtml }}
+    />
   );
 };
