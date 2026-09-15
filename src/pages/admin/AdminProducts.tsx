@@ -216,8 +216,8 @@ const AdminProducts = () => {
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
                         <BookOpen className="h-3 w-3" />
-                        {product.product_modules.length}{" "}
-                        {product.product_modules.length === 1 ? "aula" : "aulas"}
+                        {(product.product_modules || []).length}{" "}
+                        {(product.product_modules || []).length === 1 ? "aula" : "aulas"}
                       </span>
                       <span>·</span>
                       <span className="truncate font-mono text-[11px]">
