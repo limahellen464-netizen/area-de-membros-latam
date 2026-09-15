@@ -479,7 +479,8 @@ Deno.serve(async (req) => {
         return json({ success: true });
       }
 
-      case "get_quiz_funnel_analytics": {
+      case "get_quiz_funnel_analytics":
+      case "get_quiz_funnel_analytics_v2": {
         // quiz_funnel_events belongs to the old landing/VSL funnel app, not
         // this members-area repo — nothing here writes to it, so this is
         // an honest empty state rather than fabricated numbers.
