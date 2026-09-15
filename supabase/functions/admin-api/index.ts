@@ -118,6 +118,29 @@ Deno.serve(async (req) => {
         return json({ success: true, perfectpay_webhook_token: newToken });
       }
 
+      case "list_site_settings": {
+        const { data, error } = await db
+          .from("admin_settings")
+          .select("key, value")
+          .like("key", "site.%");
+        if (error) throw error;
+        return json({ settings: data || [] });
+      }
+
+      case "bulk_update_site_settings": {
+        const settings = Array.isArray(body.settings) ? body.settings : [];
+        for (const row of settings) {
+          const key = String((row as { key?: unknown })?.key || "");
+          const value = String((row as { value?: unknown })?.value ?? "");
+          if (!key.startsWith("site.")) continue;
+          const { error } = await db
+            .from("admin_settings")
+            .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+          if (error) throw error;
+        }
+        return json({ success: true });
+      }
+
       // ===================================================================
       // Products
       // ===================================================================

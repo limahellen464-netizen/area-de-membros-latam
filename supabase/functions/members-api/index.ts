@@ -136,8 +136,17 @@ Deno.serve(async (req) => {
   });
 
   const payload = await req.json().catch(() => ({}));
-  const email = String(payload.email || "").trim().toLowerCase();
   const action = String(payload.action || "login");
+
+  if (action === "get_site_settings") {
+    const { data, error } = await supabase.from("admin_settings").select("key, value").like("key", "site.%");
+    if (error) return json({ error: error.message }, 500);
+    const settings: Record<string, string> = {};
+    for (const row of data || []) settings[row.key] = row.value ?? "";
+    return json({ settings });
+  }
+
+  const email = String(payload.email || "").trim().toLowerCase();
   if (!email) return json({ error: "Email is required" }, 400);
 
   await supabase.from("access_logs").insert({
